@@ -4,8 +4,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from cards_service import CardsService
-from match_service import MatchService
+from backend.cards_service import CardsService
+from backend.match_service import MatchService
 
 
 app = FastAPI(title="CAH Claude Backend")
