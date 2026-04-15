@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   Animated, Alert, ActivityIndicator,
@@ -6,8 +6,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, typography, radius, shadows } from '../../theme';
 import { ProfileCard } from '../../components/ProfileCard';
+import { MatchToast } from '../../components/MatchToast';
 import { useBluetooth } from '../../hooks/useBluetooth';
 import { useProfile } from '../../context/ProfileContext';
+import { useSemanticMatch } from '../../hooks/useSemanticMatch';
+import { generateMatchBlurb } from '../../services/claude';
+
+const MATCH_THRESHOLD = 0.55;
 
 const PulseRing = ({ delay = 0 }) => {
   const scale = useRef(new Animated.Value(1)).current;
@@ -38,7 +43,18 @@ const PulseRing = ({ delay = 0 }) => {
   );
 };
 
-const DeviceRow = ({ device, onConnect, connecting }) => {
+const MatchBadge = ({ score }) => {
+  if (score == null) return null;
+  const pct = Math.round(score * 100);
+  const tone = pct >= 75 ? '#16A34A' : pct >= 55 ? '#7C3AED' : colors.textMuted;
+  return (
+    <View style={[styles.matchBadge, { borderColor: tone }]}>
+      <Text style={[styles.matchBadgeText, { color: tone }]}>{pct}%</Text>
+    </View>
+  );
+};
+
+const DeviceRow = ({ device, onConnect, connecting, matchScore }) => {
   const isConnecting = connecting === device.id;
   return (
     <TouchableOpacity style={styles.deviceRow} onPress={() => onConnect(device)} activeOpacity={0.8} disabled={!!connecting}>
@@ -48,7 +64,10 @@ const DeviceRow = ({ device, onConnect, connecting }) => {
         </Text>
       </View>
       <View style={styles.deviceInfo}>
-        <Text style={styles.deviceName}>{device.name}</Text>
+        <View style={styles.deviceNameRow}>
+          <Text style={styles.deviceName} numberOfLines={1}>{device.name}</Text>
+          <MatchBadge score={matchScore} />
+        </View>
         <Text style={styles.deviceSub}>
           {device.jobTitle ? `${device.jobTitle}${device.company ? ` · ${device.company}` : ''}` : 'Tap to exchange cards'}
         </Text>
@@ -67,6 +86,57 @@ const DeviceRow = ({ device, onConnect, connecting }) => {
 export default function DiscoverScreen({ navigation }) {
   const { scanning, devices, connecting, isSimulated, startScan, stopScan, connectAndExchange } = useBluetooth();
   const { profile, addCollected } = useProfile();
+  const { rankedCards, scores, indexing, available: matchAvailable } =
+    useSemanticMatch(profile, devices);
+
+  // id -> true for matches whose toast we've already shown this session
+  const shownRef = useRef(new Set());
+  const [toast, setToast] = useState(null);
+
+  // When scores change, find the highest unshown device above the
+  // threshold and surface it as a toast (with Claude-generated blurb).
+  useEffect(() => {
+    if (!matchAvailable || !devices.length) return;
+
+    let topId = null;
+    let topScore = 0;
+    for (const d of devices) {
+      const s = scores[d.id];
+      if (s == null || shownRef.current.has(d.id)) continue;
+      if (s >= MATCH_THRESHOLD && s > topScore) {
+        topScore = s;
+        topId = d.id;
+      }
+    }
+    if (!topId) return;
+
+    const device = devices.find((d) => d.id === topId);
+    shownRef.current.add(topId);
+
+    setToast({
+      id: device.id,
+      name: device.name,
+      jobTitle: device.jobTitle,
+      company: device.company,
+      score: topScore,
+      blurb: null,
+      loading: true,
+    });
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const blurb = await generateMatchBlurb(profile, device);
+        if (cancelled) return;
+        setToast((t) => (t && t.id === device.id ? { ...t, blurb, loading: false } : t));
+      } catch (err) {
+        if (cancelled) return;
+        console.warn('[match] blurb failed', err.message);
+        setToast((t) => (t && t.id === device.id ? { ...t, blurb: null, loading: false } : t));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [scores, devices, matchAvailable, profile]);
 
   const handleConnect = async (device) => {
     const card = await connectAndExchange(device, profile);
@@ -82,8 +152,18 @@ export default function DiscoverScreen({ navigation }) {
     );
   };
 
+  const onToastPress = (m) => {
+    const device = devices.find((d) => d.id === m.id);
+    if (device) handleConnect(device);
+  };
+
   return (
     <View style={styles.container}>
+      <MatchToast
+        match={toast}
+        onPress={onToastPress}
+        onDismiss={() => setToast(null)}
+      />
       {/* Radar header */}
       <LinearGradient colors={['#0F172A', '#1E1B4B']} style={styles.radar}>
         <View style={styles.radarCenter}>
@@ -119,12 +199,23 @@ export default function DiscoverScreen({ navigation }) {
 
       {/* Devices list */}
       <FlatList
-        data={devices}
+        data={rankedCards}
         keyExtractor={(d) => d.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           devices.length > 0
-            ? <Text style={styles.listHeader}>{devices.length} {devices.length === 1 ? 'person' : 'people'} nearby</Text>
+            ? (
+              <View style={styles.listHeaderRow}>
+                <Text style={styles.listHeader}>
+                  {devices.length} {devices.length === 1 ? 'person' : 'people'} nearby
+                </Text>
+                {matchAvailable && (
+                  <Text style={styles.listHeaderNote}>
+                    {indexing ? 'Matching…' : 'Ranked by match'}
+                  </Text>
+                )}
+              </View>
+            )
             : null
         }
         ListEmptyComponent={
@@ -137,7 +228,12 @@ export default function DiscoverScreen({ navigation }) {
           ) : null
         }
         renderItem={({ item }) => (
-          <DeviceRow device={item} onConnect={handleConnect} connecting={connecting} />
+          <DeviceRow
+            device={item}
+            onConnect={handleConnect}
+            connecting={connecting}
+            matchScore={matchAvailable ? scores[item.id] : null}
+          />
         )}
       />
     </View>
@@ -168,7 +264,12 @@ const styles = StyleSheet.create({
   scanBtnStop: { backgroundColor: colors.error },
   scanBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
   list: { padding: spacing.lg, paddingBottom: 100 },
-  listHeader: { fontSize: 13, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.md },
+  listHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  listHeader: { fontSize: 13, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  listHeaderNote: { fontSize: 11, fontWeight: '600', color: colors.primary, letterSpacing: 0.3 },
+  deviceNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  matchBadge: { borderWidth: 1, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  matchBadgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
   deviceRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: colors.surface, borderRadius: radius.lg,
@@ -181,7 +282,7 @@ const styles = StyleSheet.create({
   },
   deviceAvatarText: { fontSize: 18, fontWeight: '700', color: '#fff' },
   deviceInfo: { flex: 1 },
-  deviceName: { fontSize: 16, fontWeight: '600', color: colors.text },
+  deviceName: { flexShrink: 1, fontSize: 16, fontWeight: '600', color: colors.text },
   deviceSub: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   exchangeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EDE9FE', justifyContent: 'center', alignItems: 'center' },
   exchangeIcon: { fontSize: 18 },
