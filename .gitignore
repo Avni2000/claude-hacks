@@ -40,3 +40,4 @@ yarn-error.*
 /ios
 /android
 backend/.env
+backend/__pycache__/

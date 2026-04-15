@@ -142,19 +142,24 @@ export default function DiscoverScreen({ navigation }) {
     const card = await connectAndExchange(device, profile);
     if (!card) return;
     await addCollected(card);
+    const joinNonce = Date.now();
     Alert.alert(
       '🎉 Cards Exchanged!',
-      `You now have ${card.name}'s card. Head to Collected to review them!`,
+      `You now have ${card.name}'s card. You can review them later or jump into the nearby game table now.`,
       [
         { text: 'View Card', onPress: () => navigation.navigate('Collected') },
+        { text: 'Play Game', onPress: () => navigation.navigate('Game', { autoJoin: true, roomCode: 'nearby-demo', joinNonce }) },
         { text: 'Keep Scanning' },
       ]
     );
   };
 
   const onToastPress = (m) => {
-    const device = devices.find((d) => d.id === m.id);
-    if (device) handleConnect(device);
+    navigation.navigate('Game', {
+      autoJoin: true,
+      roomCode: 'nearby-demo',
+      joinNonce: Date.now(),
+    });
   };
 
   return (
