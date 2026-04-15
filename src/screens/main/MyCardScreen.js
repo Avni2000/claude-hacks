@@ -85,6 +85,14 @@ export default function MyCardScreen({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionBtn}
+          onPress={() => navigation.navigate('Game')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.actionIcon}>🃏</Text>
+          <Text style={styles.actionLabel}>Game</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionBtn}
           onPress={() => Alert.alert('Edit Card', 'Edit coming soon — tap Back to re-do onboarding.', [
             { text: 'Cancel' },
             { text: 'Reset & Edit', style: 'destructive', onPress: async () => { await clearAll(); } },

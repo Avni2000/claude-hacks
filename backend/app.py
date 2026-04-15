@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from cards_service import CardsService
+from backend.cards_service import CardsService
 
 
 app = FastAPI(title="CAH Claude Backend")
