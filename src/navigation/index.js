@@ -21,6 +21,7 @@ import MyCardScreen from '../screens/main/MyCardScreen';
 import DiscoverScreen from '../screens/main/DiscoverScreen';
 import CollectedScreen from '../screens/main/CollectedScreen';
 import ReviewsScreen from '../screens/main/ReviewsScreen';
+import GameScreen from '../screens/main/GameScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -30,6 +31,7 @@ const TAB_ICONS = {
   Discover: ['📡', '📡'],
   Collected: ['🗂️', '🗂️'],
   Reviews: ['⭐', '⭐'],
+  Game: ['🃏', '🃏'],
 };
 
 function TabIcon({ name, focused }) {
@@ -63,6 +65,7 @@ function MainTabs() {
       <Tab.Screen name="Discover" component={DiscoverScreen} options={{ title: 'Discover' }} />
       <Tab.Screen name="Collected" component={CollectedScreen} options={{ title: 'Collected' }} />
       <Tab.Screen name="Reviews" component={ReviewsScreen} options={{ title: 'Reviews' }} />
+      <Tab.Screen name="Game" component={GameScreen} options={{ title: 'Game' }} />
     </Tab.Navigator>
   );
 }
