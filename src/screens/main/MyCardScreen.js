@@ -3,48 +3,52 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Alert, Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useProfile } from '../../context/ProfileContext';
 import { clearAll } from '../../utils/storage';
 
 const C = {
-  bg: '#080808',
-  lime: '#CCFF00',
-  white: '#F2F2F2',
-  muted: '#555',
-  mutedLight: '#777',
-  border: '#1E1E1E',
-  cardBorder: '#2A2A2A',
-  chipBg: '#141414',
-  limeFaint: 'rgba(204,255,0,0.08)',
+  bg: '#F8F9FB',
+  surface: '#FFFFFF',
+  surfaceHi: '#F5F7FB',
+  border: 'rgba(0,0,0,0.06)',
+  borderHi: 'rgba(0,0,0,0.08)',
+  text: '#0F172A',
+  textMuted: '#64748B',
+  textFaint: '#94A3B8',
+  accent: '#6366F1',
+  accentSoft: 'rgba(99, 102, 241, 0.08)',
+  accentBorder: 'rgba(99, 102, 241, 0.2)',
+  accentText: '#4F46E5',
 };
 
-function useFadeIn(delay = 0) {
-  const anim = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(14)).current;
+function useEntrance(delay = 0) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translate = useRef(new Animated.Value(12)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(anim, { toValue: 1, duration: 420, delay, useNativeDriver: true }),
-      Animated.timing(slide, { toValue: 0, duration: 420, delay, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 500, delay, useNativeDriver: true }),
+      Animated.timing(translate, { toValue: 0, duration: 500, delay, useNativeDriver: true }),
     ]).start();
   }, []);
-  return { opacity: anim, transform: [{ translateY: slide }] };
+  return { opacity, transform: [{ translateY: translate }] };
 }
 
 export default function MyCardScreen({ navigation }) {
   const { profile, collected } = useProfile();
 
-  const headerAnim = useFadeIn(0);
-  const cardAnim = useFadeIn(100);
-  const actionsAnim = useFadeIn(200);
-  const matchesAnim = useFadeIn(300);
+  const headerAnim = useEntrance(0);
+  const cardAnim = useEntrance(80);
+  const actionsAnim = useEntrance(180);
+  const interestsAnim = useEntrance(260);
+  const matchesAnim = useEntrance(340);
 
   const myInterests = profile?.interests || [];
 
   const matches = useMemo(() => {
     return (collected || [])
       .map((card) => {
-        const cardInterests = card.interests || [];
-        const shared = cardInterests.filter((i) => myInterests.includes(i));
+        const shared = (card.interests || []).filter((i) => myInterests.includes(i));
         return { card, shared };
       })
       .filter((m) => m.shared.length > 0)
@@ -61,8 +65,10 @@ export default function MyCardScreen({ navigation }) {
     .join('')
     .toUpperCase();
 
+  const firstName = (profile.name || '').trim().split(' ')[0];
+
   const handleReset = () => {
-    Alert.alert('Reset Card', 'This clears your card and restarts onboarding.', [
+    Alert.alert('Reset Card', 'This will clear your card and restart onboarding.', [
       { text: 'Cancel' },
       { text: 'Reset', style: 'destructive', onPress: async () => { await clearAll(); } },
     ]);
@@ -70,7 +76,9 @@ export default function MyCardScreen({ navigation }) {
 
   return (
     <View style={styles.root}>
-      <View style={styles.stripe} />
+      {/* Ambient background glows */}
+      <View style={styles.glow1} />
+      <View style={styles.glow2} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -78,127 +86,156 @@ export default function MyCardScreen({ navigation }) {
       >
         {/* Header */}
         <Animated.View style={[styles.header, headerAnim]}>
-          <View style={styles.badgeRow}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>CFH</Text>
-            </View>
-            <View style={styles.liveIndicator} />
-            <Text style={styles.liveText}>Card · Active</Text>
+          <View>
+            <Text style={styles.hello}>Welcome back</Text>
+            <Text style={styles.headerName}>{firstName}</Text>
           </View>
-          <Text style={styles.pageTitle}>Your{'\n'}Card</Text>
+          <View style={styles.avatarSm}>
+            <Text style={styles.avatarSmText}>{initials}</Text>
+          </View>
         </Animated.View>
 
-        {/* Card */}
-        <Animated.View style={[styles.card, cardAnim]}>
-          <View style={styles.cornerTL} />
-          <View style={styles.cornerBR} />
+        {/* Business Card */}
+        <Animated.View style={[styles.cardWrap, cardAnim]}>
+          <LinearGradient
+            colors={['#EEF2FF', '#F0F9FF', '#F0FDFA']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.card}
+          >
+            <View style={styles.blob1} />
+            <View style={styles.blob2} />
 
-          <View style={styles.cardTop}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
+            <View style={styles.cardBrand}>
+              <View style={styles.brandDot} />
+              <Text style={styles.brandText}>CARD FOR HUMANITY</Text>
             </View>
-            <Text style={styles.cardTag}>ID · {profile.id?.slice(-6).toUpperCase()}</Text>
-          </View>
 
-          <Text style={styles.cardName}>{profile.name}</Text>
-
-          <View style={styles.cardRow}>
-            <Text style={styles.cardLabel}>MAJOR</Text>
-            <Text style={styles.cardValue}>{profile.major}</Text>
-          </View>
-
-          <View style={styles.cardInterests}>
-            <View style={styles.labelRow}>
-              <Text style={styles.cardLabel}>INTERESTS</Text>
-              <Text style={styles.cardLabelCount}>· {myInterests.length}</Text>
+            <View style={styles.cardBody}>
+              <Text style={styles.cardName}>{profile.name}</Text>
+              <Text style={styles.cardMajor}>{profile.major}</Text>
             </View>
-            <View style={styles.chips}>
-              {myInterests.length > 0 ? (
-                myInterests.map((item) => (
-                  <View key={item} style={styles.chip}>
-                    <Text style={styles.chipText}>{item}</Text>
+
+            {myInterests.length > 0 && (
+              <View style={styles.cardTags}>
+                {myInterests.slice(0, 3).map((i) => (
+                  <View key={i} style={styles.cardTag}>
+                    <Text style={styles.cardTagText}>{i}</Text>
                   </View>
-                ))
-              ) : (
-                <Text style={styles.emptyNote}>None added</Text>
-              )}
-            </View>
-          </View>
+                ))}
+                {myInterests.length > 3 && (
+                  <View style={styles.cardTag}>
+                    <Text style={styles.cardTagText}>+{myInterests.length - 3}</Text>
+                  </View>
+                )}
+              </View>
+            )}
 
-          <View style={styles.cardFooter}>
-            <Text style={styles.cardFooterText}>CARD FOR HUMANITY</Text>
-          </View>
+            <Text style={styles.cardId}>#{profile.id?.slice(-6).toUpperCase()}</Text>
+          </LinearGradient>
         </Animated.View>
 
-        {/* Actions */}
+        {/* Quick Actions */}
         <Animated.View style={[styles.actions, actionsAnim]}>
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => navigation.navigate('Discover')}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
-            <Text style={styles.actionNum}>01</Text>
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionIconText}>📡</Text>
+            </View>
             <Text style={styles.actionLabel}>Discover</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => navigation.navigate('Game')}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
-            <Text style={styles.actionNum}>02</Text>
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionIconText}>🃏</Text>
+            </View>
             <Text style={styles.actionLabel}>Game</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={handleReset}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
-            <Text style={styles.actionNum}>03</Text>
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionIconText}>✏️</Text>
+            </View>
             <Text style={styles.actionLabel}>Reset</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Matches */}
-        <Animated.View style={[styles.section, matchesAnim]}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionArrow}>›</Text>
-            <Text style={styles.sectionTitle}>Matching Interests</Text>
-            <Text style={styles.sectionCount}>{matches.length}</Text>
+        {/* Your Interests */}
+        <Animated.View style={[styles.panel, interestsAnim]}>
+          <View style={styles.panelHeader}>
+            <Text style={styles.panelTitle}>Your Interests</Text>
+            <View style={styles.countPill}>
+              <Text style={styles.countPillText}>{myInterests.length}</Text>
+            </View>
+          </View>
+          {myInterests.length > 0 ? (
+            <View style={styles.chips}>
+              {myInterests.map((item) => (
+                <View key={item} style={styles.chip}>
+                  <Text style={styles.chipText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyInline}>No interests added yet</Text>
+          )}
+        </Animated.View>
+
+        {/* Shared Interests (Matches) */}
+        <Animated.View style={[styles.panel, matchesAnim]}>
+          <View style={styles.panelHeader}>
+            <Text style={styles.panelTitle}>Shared Interests</Text>
+            <View style={styles.countPill}>
+              <Text style={styles.countPillText}>{matches.length}</Text>
+            </View>
           </View>
 
           {matches.length === 0 ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>No matches yet</Text>
-              <Text style={styles.emptySub}>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>✨</Text>
+              <Text style={styles.emptyTitle}>No matches yet</Text>
+              <Text style={styles.emptyText}>
                 Collect cards from people who share your interests.
               </Text>
             </View>
           ) : (
-            matches.map(({ card, shared }) => (
-              <View key={card.id} style={styles.matchRow}>
-                <View style={styles.matchHeader}>
-                  <View style={styles.matchAvatar}>
-                    <Text style={styles.matchAvatarText}>
-                      {(card.name || '?')[0].toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.matchInfo}>
-                    <Text style={styles.matchName}>{card.name}</Text>
-                    {card.major ? (
-                      <Text style={styles.matchMajor}>{card.major}</Text>
-                    ) : null}
-                  </View>
-                  <View style={styles.matchScore}>
-                    <Text style={styles.matchScoreNum}>{shared.length}</Text>
-                    <Text style={styles.matchScoreLabel}>MATCH</Text>
+            matches.map(({ card, shared }, idx) => (
+              <View
+                key={card.id}
+                style={[styles.matchRow, idx > 0 && styles.matchRowDivider]}
+              >
+                <View style={styles.matchAvatar}>
+                  <Text style={styles.matchAvatarText}>
+                    {(card.name || '?')[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.matchInfo}>
+                  <Text style={styles.matchName} numberOfLines={1}>{card.name}</Text>
+                  {card.major ? (
+                    <Text style={styles.matchMajor} numberOfLines={1}>{card.major}</Text>
+                  ) : null}
+                  <View style={styles.matchChips}>
+                    {shared.slice(0, 3).map((i) => (
+                      <View key={i} style={styles.matchChip}>
+                        <Text style={styles.matchChipText}>{i}</Text>
+                      </View>
+                    ))}
+                    {shared.length > 3 && (
+                      <Text style={styles.matchMore}>+{shared.length - 3}</Text>
+                    )}
                   </View>
                 </View>
-                <View style={styles.matchChips}>
-                  {shared.map((interest) => (
-                    <View key={interest} style={styles.matchChip}>
-                      <Text style={styles.matchChipText}>{interest}</Text>
-                    </View>
-                  ))}
+                <View style={styles.matchBadge}>
+                  <Text style={styles.matchBadgeNum}>{shared.length}</Text>
                 </View>
               </View>
             ))
@@ -211,210 +248,275 @@ export default function MyCardScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  stripe: {
-    position: 'absolute', top: 0, right: 0,
-    width: 3, height: '100%',
-    backgroundColor: C.lime,
+
+  // Ambient glows
+  glow1: {
+    position: 'absolute',
+    top: -120, right: -100,
+    width: 340, height: 340, borderRadius: 170,
+    backgroundColor: 'rgba(99, 102, 241, 0.05)',
   },
-  scroll: { padding: 28, paddingTop: 56, paddingBottom: 140 },
+  glow2: {
+    position: 'absolute',
+    top: 200, left: -140,
+    width: 280, height: 280, borderRadius: 140,
+    backgroundColor: 'rgba(59, 130, 246, 0.04)',
+  },
+
+  scroll: { padding: 22, paddingTop: 60, paddingBottom: 140 },
 
   // Header
-  header: { marginBottom: 28 },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 22 },
-  badge: {
-    borderWidth: 1, borderColor: C.lime,
-    paddingHorizontal: 8, paddingVertical: 3,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 28,
   },
-  badgeText: { fontSize: 11, fontWeight: '800', color: C.lime, letterSpacing: 2 },
-  liveIndicator: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.lime },
-  liveText: { fontSize: 12, color: C.muted, letterSpacing: 0.5 },
-  pageTitle: {
-    fontSize: 48, fontWeight: '900', color: C.white,
-    lineHeight: 50, letterSpacing: -1.5,
+  hello: {
+    fontSize: 14,
+    color: C.textMuted,
+    letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  headerName: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: C.text,
+    letterSpacing: -0.5,
+  },
+  avatarSm: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: C.surfaceHi,
+    borderWidth: 1, borderColor: C.borderHi,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  avatarSmText: {
+    fontSize: 14, fontWeight: '700', color: C.text, letterSpacing: 0.5,
   },
 
   // Card
+  cardWrap: {
+    marginBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
+  },
   card: {
-    borderWidth: 1.5, borderColor: C.cardBorder,
-    padding: 22,
-    marginBottom: 26,
-    position: 'relative',
+    borderRadius: 24,
+    padding: 26,
+    minHeight: 230,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.15)',
   },
-  cornerTL: {
-    position: 'absolute', top: 0, left: 0,
-    width: 18, height: 18,
-    borderTopWidth: 2, borderLeftWidth: 2,
-    borderColor: C.lime,
+  blob1: {
+    position: 'absolute',
+    top: -60, right: -40,
+    width: 180, height: 180, borderRadius: 90,
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
   },
-  cornerBR: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 18, height: 18,
-    borderBottomWidth: 2, borderRightWidth: 2,
-    borderColor: C.lime,
+  blob2: {
+    position: 'absolute',
+    bottom: -50, left: -30,
+    width: 140, height: 140, borderRadius: 70,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
   },
-  cardTop: {
+  cardBrand: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    gap: 8,
+    marginBottom: 34,
   },
-  avatar: {
-    width: 52, height: 52,
-    borderWidth: 1.5, borderColor: C.lime,
-    justifyContent: 'center', alignItems: 'center',
+  brandDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: '#6366F1', opacity: 0.8,
   },
-  avatarText: {
-    fontSize: 18, fontWeight: '900', color: C.lime, letterSpacing: 1,
+  brandText: {
+    fontSize: 10, fontWeight: '700', color: '#6366F1',
+    opacity: 0.6, letterSpacing: 2,
+  },
+  cardBody: { marginBottom: 18 },
+  cardName: {
+    fontSize: 30, fontWeight: '700', color: '#0F172A',
+    letterSpacing: -0.8, lineHeight: 34, marginBottom: 6,
+  },
+  cardMajor: {
+    fontSize: 15,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  cardTags: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 20,
+    flexWrap: 'wrap',
   },
   cardTag: {
-    fontSize: 10, color: C.muted, letterSpacing: 1.5, fontWeight: '700',
-  },
-  cardName: {
-    fontSize: 34, fontWeight: '900', color: C.white,
-    letterSpacing: -1, marginBottom: 16, lineHeight: 36,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 12,
-    marginBottom: 16,
-    paddingTop: 14,
-    borderTopWidth: 1, borderTopColor: C.border,
-  },
-  cardLabel: {
-    fontSize: 10, fontWeight: '800',
-    color: C.lime, letterSpacing: 1.5,
-  },
-  cardLabelCount: {
-    fontSize: 10, fontWeight: '700',
-    color: C.muted, letterSpacing: 1,
-  },
-  cardValue: {
-    fontSize: 14, color: C.white, fontWeight: '500', flex: 1,
-  },
-  cardInterests: {
-    paddingTop: 14,
-    borderTopWidth: 1, borderTopColor: C.border,
-  },
-  labelRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
-  },
-  chip: {
-    borderWidth: 1, borderColor: C.cardBorder,
     paddingHorizontal: 10, paddingVertical: 5,
-    backgroundColor: C.chipBg,
+    borderRadius: 999,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.2)',
   },
-  chipText: { fontSize: 11, fontWeight: '600', color: C.mutedLight },
-  emptyNote: {
-    fontSize: 12, color: C.muted, fontStyle: 'italic',
+  cardTagText: {
+    fontSize: 11, color: '#4F46E5', fontWeight: '600',
   },
-  cardFooter: {
-    marginTop: 18,
-    paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: C.border,
-  },
-  cardFooterText: {
-    fontSize: 9, color: C.muted, letterSpacing: 2, fontWeight: '700',
+  cardId: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '600',
+    letterSpacing: 1.5,
   },
 
   // Actions
   actions: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 34,
+    gap: 10,
+    marginBottom: 26,
   },
   actionBtn: {
     flex: 1,
-    borderWidth: 1, borderColor: C.cardBorder,
-    padding: 14,
+    backgroundColor: C.surface,
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
   },
-  actionNum: {
-    fontSize: 10, fontWeight: '800', color: C.lime,
-    letterSpacing: 1.5, marginBottom: 4,
+  actionIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: C.surfaceHi,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 8,
   },
+  actionIconText: { fontSize: 18 },
   actionLabel: {
-    fontSize: 13, fontWeight: '700', color: C.white,
+    fontSize: 12, fontWeight: '600', color: C.text,
   },
 
-  // Section
-  section: { marginBottom: 16 },
-  sectionHeader: {
+  // Panels
+  panel: {
+    backgroundColor: C.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  panelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 18,
-    paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: C.border,
+    marginBottom: 16,
   },
-  sectionArrow: {
-    fontSize: 20, color: C.lime, fontWeight: '900', marginTop: -2,
+  panelTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: C.text,
+    letterSpacing: -0.2,
   },
-  sectionTitle: {
-    fontSize: 16, fontWeight: '800', color: C.white,
-    letterSpacing: -0.2, flex: 1,
-  },
-  sectionCount: {
-    fontSize: 11, color: C.lime, fontWeight: '800', letterSpacing: 1,
-  },
-
-  // Matches
-  empty: {
-    paddingVertical: 36,
+  countPill: {
+    backgroundColor: C.surfaceHi,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    minWidth: 26,
     alignItems: 'center',
   },
+  countPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.textMuted,
+  },
+
+  // Interest chips
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: C.surfaceHi,
+    borderWidth: 1,
+    borderColor: C.borderHi,
+  },
+  chipText: {
+    fontSize: 12, fontWeight: '600', color: C.text,
+  },
+
+  emptyInline: {
+    fontSize: 13, color: C.textFaint, fontStyle: 'italic',
+  },
+
+  // Empty state
+  emptyState: {
+    paddingVertical: 28,
+    alignItems: 'center',
+  },
+  emptyIcon: { fontSize: 26, marginBottom: 10 },
+  emptyTitle: {
+    fontSize: 14, fontWeight: '600', color: C.text, marginBottom: 4,
+  },
   emptyText: {
-    fontSize: 14, fontWeight: '700', color: C.white,
-    marginBottom: 6,
+    fontSize: 12, color: C.textMuted, textAlign: 'center',
+    paddingHorizontal: 20, lineHeight: 18,
   },
-  emptySub: {
-    fontSize: 12, color: C.muted, textAlign: 'center',
-    lineHeight: 18, paddingHorizontal: 24,
-  },
+
+  // Match rows
   matchRow: {
-    borderWidth: 1, borderColor: C.cardBorder,
-    padding: 14,
-    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
   },
-  matchHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 12, marginBottom: 12,
+  matchRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: C.border,
   },
   matchAvatar: {
-    width: 36, height: 36,
-    borderWidth: 1, borderColor: C.lime,
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: C.surfaceHi,
+    borderWidth: 1,
+    borderColor: C.borderHi,
     justifyContent: 'center', alignItems: 'center',
   },
   matchAvatarText: {
-    fontSize: 14, fontWeight: '900', color: C.lime,
+    fontSize: 15, fontWeight: '700', color: C.text,
   },
   matchInfo: { flex: 1 },
   matchName: {
-    fontSize: 15, fontWeight: '700', color: C.white,
+    fontSize: 14, fontWeight: '600', color: C.text, marginBottom: 2,
   },
   matchMajor: {
-    fontSize: 11, color: C.muted, marginTop: 2,
+    fontSize: 11, color: C.textMuted, marginBottom: 6,
   },
-  matchScore: {
-    alignItems: 'flex-end',
+  matchChips: {
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
-  matchScoreNum: {
-    fontSize: 22, fontWeight: '900', color: C.lime, lineHeight: 24,
-  },
-  matchScoreLabel: {
-    fontSize: 9, color: C.lime, letterSpacing: 1, fontWeight: '800',
-  },
-  matchChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   matchChip: {
-    borderWidth: 1, borderColor: C.lime,
-    backgroundColor: C.limeFaint,
-    paddingHorizontal: 8, paddingVertical: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: C.accentSoft,
+    borderWidth: 1,
+    borderColor: C.accentBorder,
   },
   matchChipText: {
-    fontSize: 10, fontWeight: '700', color: C.lime, letterSpacing: 0.3,
+    fontSize: 10, fontWeight: '600', color: C.accentText,
+  },
+  matchMore: {
+    fontSize: 10, fontWeight: '700', color: C.textMuted, marginLeft: 2,
+  },
+  matchBadge: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: C.accentSoft,
+    borderWidth: 1,
+    borderColor: C.accentBorder,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  matchBadgeNum: {
+    fontSize: 13, fontWeight: '800', color: C.accentText,
   },
 });
