@@ -49,15 +49,15 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: '#080808',
+          borderTopColor: '#1E1E1E',
           borderTopWidth: 1,
           height: 80,
           paddingBottom: 20,
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textLight,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarActiveTintColor: '#CCFF00',
+        tabBarInactiveTintColor: '#555',
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
         tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
       })}
     >
