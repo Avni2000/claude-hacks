@@ -1,11 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
+  Animated, Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
 import { useProfile } from '../../context/ProfileContext';
+
+const { width } = Dimensions.get('window');
+
+const C = {
+  bg: '#080808',
+  lime: '#CCFF00',
+  white: '#F2F2F2',
+  muted: '#555',
+  border: '#1E1E1E',
+  inputLine: '#2A2A2A',
+  chipBorder: '#2E2E2E',
+  chipActiveBg: '#CCFF00',
+  chipActiveText: '#080808',
+  customChipBg: '#1A1A1A',
+};
 
 const INTERESTS = [
   'AI / ML', 'Web Dev', 'Mobile', 'Data Science', 'Cybersecurity',
@@ -13,12 +27,33 @@ const INTERESTS = [
   'Healthcare', 'Music', 'Sports', 'Art', 'Writing', 'Photography',
 ];
 
+function useFadeIn(delay = 0) {
+  const anim = useRef(new Animated.Value(0)).current;
+  const slide = useRef(new Animated.Value(18)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(anim, { toValue: 1, duration: 420, delay, useNativeDriver: true }),
+      Animated.timing(slide, { toValue: 0, duration: 420, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
+  return { opacity: anim, transform: [{ translateY: slide }] };
+}
+
 export default function LoginScreen() {
   const { updateProfile } = useProfile();
   const [name, setName] = useState('');
   const [major, setMajor] = useState('');
   const [selected, setSelected] = useState([]);
   const [customInput, setCustomInput] = useState('');
+  const [nameFocused, setNameFocused] = useState(false);
+  const [majorFocused, setMajorFocused] = useState(false);
+  const [customFocused, setCustomFocused] = useState(false);
+
+  const headerAnim = useFadeIn(0);
+  const field1Anim = useFadeIn(120);
+  const field2Anim = useFadeIn(210);
+  const field3Anim = useFadeIn(300);
+  const btnAnim = useFadeIn(390);
 
   const toggleInterest = (item) => {
     setSelected((prev) =>
@@ -40,14 +75,8 @@ export default function LoginScreen() {
   };
 
   const handleGetStarted = async () => {
-    if (!name.trim()) {
-      Alert.alert('', 'Please enter your name.');
-      return;
-    }
-    if (!major.trim()) {
-      Alert.alert('', 'Please enter your major.');
-      return;
-    }
+    if (!name.trim()) { Alert.alert('', 'Please enter your name.'); return; }
+    if (!major.trim()) { Alert.alert('', 'Please enter your major.'); return; }
     await updateProfile({
       id: Date.now().toString(),
       name: name.trim(),
@@ -59,218 +88,290 @@ export default function LoginScreen() {
   const canSubmit = name.trim() && major.trim();
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <LinearGradient colors={['#3B0764', '#1E3A8A', '#0F172A']} style={styles.gradient}>
-        <View style={styles.blob1} />
-        <View style={styles.blob2} />
-      </LinearGradient>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Accent stripe */}
+      <View style={styles.stripe} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.logoRow}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoEmoji}>💼</Text>
+        {/* Header */}
+        <Animated.View style={[styles.header, headerAnim]}>
+          <View style={styles.badgeRow}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>CFH</Text>
+            </View>
+            <View style={styles.liveIndicator} />
+            <Text style={styles.liveText}>Card for Humanity</Text>
           </View>
-          <Text style={styles.appName}>Card for Humanity</Text>
-        </View>
+          <Text style={styles.headline}>Who{'\n'}are you?</Text>
+          <Text style={styles.sub}>Build your card in under a minute.</Text>
+        </Animated.View>
 
-        <Text style={styles.headline}>Create your card</Text>
-        <Text style={styles.sub}>Tell us a bit about yourself to get started.</Text>
+        {/* Divider */}
+        <View style={styles.divider} />
 
-        <View style={styles.card}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Full Name *</Text>
+        {/* Field 01 — Name */}
+        <Animated.View style={[styles.section, field1Anim]}>
+          <Text style={styles.sectionNum}>01</Text>
+          <Text style={styles.sectionLabel}>Full Name</Text>
+          <TextInput
+            style={[styles.input, nameFocused && styles.inputFocused]}
+            value={name}
+            onChangeText={setName}
+            placeholder="Alex Johnson"
+            placeholderTextColor={C.muted}
+            onFocus={() => setNameFocused(true)}
+            onBlur={() => setNameFocused(false)}
+            autoFocus
+            returnKeyType="next"
+          />
+        </Animated.View>
+
+        <View style={styles.divider} />
+
+        {/* Field 02 — Major */}
+        <Animated.View style={[styles.section, field2Anim]}>
+          <Text style={styles.sectionNum}>02</Text>
+          <Text style={styles.sectionLabel}>Major</Text>
+          <TextInput
+            style={[styles.input, majorFocused && styles.inputFocused]}
+            value={major}
+            onChangeText={setMajor}
+            placeholder="Computer Science"
+            placeholderTextColor={C.muted}
+            onFocus={() => setMajorFocused(true)}
+            onBlur={() => setMajorFocused(false)}
+            returnKeyType="done"
+          />
+        </Animated.View>
+
+        <View style={styles.divider} />
+
+        {/* Field 03 — Interests */}
+        <Animated.View style={[styles.section, field3Anim]}>
+          <Text style={styles.sectionNum}>03</Text>
+          <Text style={styles.sectionLabel}>Interests</Text>
+          <Text style={styles.sectionHint}>Tap to select · Type to add your own</Text>
+
+          {/* Custom input */}
+          <View style={[styles.customRow, customFocused && styles.customRowFocused]}>
             <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. Alex Johnson"
-              placeholderTextColor={colors.textLight}
-              autoFocus
-              returnKeyType="next"
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Major *</Text>
-            <TextInput
-              style={styles.input}
-              value={major}
-              onChangeText={setMajor}
-              placeholder="e.g. Computer Science"
-              placeholderTextColor={colors.textLight}
+              style={styles.customInput}
+              value={customInput}
+              onChangeText={setCustomInput}
+              placeholder="Add interest..."
+              placeholderTextColor={C.muted}
+              onFocus={() => setCustomFocused(true)}
+              onBlur={() => setCustomFocused(false)}
               returnKeyType="done"
+              onSubmitEditing={addCustomInterest}
             />
+            <TouchableOpacity
+              style={[styles.addBtn, !customInput.trim() && styles.addBtnOff]}
+              onPress={addCustomInterest}
+              disabled={!customInput.trim()}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.addBtnText, !customInput.trim() && styles.addBtnTextOff]}>
+                + ADD
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Interests</Text>
-            <Text style={styles.hint}>Pick from the list or type your own</Text>
+          {/* Preset chips */}
+          <View style={styles.chips}>
+            {INTERESTS.map((item) => {
+              const active = selected.includes(item);
+              return (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => toggleInterest(item)}
+                  style={[styles.chip, active && styles.chipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
 
-            <View style={styles.customRow}>
-              <TextInput
-                style={styles.customInput}
-                value={customInput}
-                onChangeText={setCustomInput}
-                placeholder="Add your own..."
-                placeholderTextColor={colors.textLight}
-                returnKeyType="done"
-                onSubmitEditing={addCustomInterest}
-              />
-              <TouchableOpacity
-                style={[styles.addBtn, !customInput.trim() && styles.addBtnDisabled]}
-                onPress={addCustomInterest}
-                disabled={!customInput.trim()}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.addBtnText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.chips}>
-              {INTERESTS.map((item) => {
-                const active = selected.includes(item);
-                return (
-                  <TouchableOpacity
-                    key={item}
-                    onPress={() => toggleInterest(item)}
-                    style={[styles.chip, active && styles.chipSelected]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.chipText, active && styles.chipTextSelected]}>
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-              {selected
-                .filter((item) => !INTERESTS.includes(item))
-                .map((item) => (
-                  <TouchableOpacity
-                    key={item}
-                    onPress={() => removeInterest(item)}
-                    style={[styles.chip, styles.chipCustom]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.chipText, styles.chipTextSelected]}>{item}</Text>
-                    <Text style={styles.chipRemove}> ✕</Text>
-                  </TouchableOpacity>
-                ))}
-            </View>
+            {/* Custom chips */}
+            {selected
+              .filter((item) => !INTERESTS.includes(item))
+              .map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => removeInterest(item)}
+                  style={styles.chipCustom}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.chipCustomText}>{item}</Text>
+                  <Text style={styles.chipX}> ×</Text>
+                </TouchableOpacity>
+              ))}
           </View>
-        </View>
 
-        <TouchableOpacity
-          style={[styles.btn, !canSubmit && styles.btnDisabled]}
-          onPress={handleGetStarted}
-          activeOpacity={0.85}
-          disabled={!canSubmit}
-        >
-          <Text style={styles.btnText}>Get Started</Text>
-        </TouchableOpacity>
+          {selected.length > 0 && (
+            <Text style={styles.selectedCount}>
+              {selected.length} selected
+            </Text>
+          )}
+        </Animated.View>
+
+        <View style={styles.divider} />
+
+        {/* CTA */}
+        <Animated.View style={btnAnim}>
+          <TouchableOpacity
+            style={[styles.btn, !canSubmit && styles.btnOff]}
+            onPress={handleGetStarted}
+            activeOpacity={0.85}
+            disabled={!canSubmit}
+          >
+            <Text style={[styles.btnText, !canSubmit && styles.btnTextOff]}>
+              Get Started →
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
-  gradient: {
-    ...StyleSheet.absoluteFillObject,
+  root: { flex: 1, backgroundColor: C.bg },
+
+  stripe: {
+    position: 'absolute',
+    top: 0, right: 0,
+    width: 3,
+    height: '100%',
+    backgroundColor: C.lime,
   },
-  blob1: {
-    position: 'absolute', width: 300, height: 300, borderRadius: 150,
-    backgroundColor: 'rgba(124, 58, 237, 0.25)', top: -80, right: -80,
-  },
-  blob2: {
-    position: 'absolute', width: 200, height: 200, borderRadius: 100,
-    backgroundColor: 'rgba(6, 182, 212, 0.12)', bottom: 200, left: -60,
-  },
+
   scroll: {
-    padding: spacing.lg,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingHorizontal: 28,
+    paddingTop: 64,
+    paddingBottom: 56,
   },
-  logoRow: {
+
+  // Header
+  header: { marginBottom: 32 },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 28 },
+  badge: {
+    borderWidth: 1, borderColor: C.lime,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  badgeText: { fontSize: 11, fontWeight: '800', color: C.lime, letterSpacing: 2 },
+  liveIndicator: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: C.lime,
+  },
+  liveText: { fontSize: 12, color: C.muted, letterSpacing: 0.5 },
+
+  headline: {
+    fontSize: 56,
+    fontWeight: '900',
+    color: C.white,
+    lineHeight: 58,
+    letterSpacing: -2,
+    marginBottom: 12,
+  },
+  sub: { fontSize: 14, color: C.muted, letterSpacing: 0.3 },
+
+  divider: { height: 1, backgroundColor: C.border, marginVertical: 24 },
+
+  // Sections
+  section: { paddingVertical: 4 },
+  sectionNum: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.lime,
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  sectionLabel: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: C.white,
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  sectionHint: { fontSize: 12, color: C.muted, marginBottom: 14, letterSpacing: 0.2 },
+
+  // Inputs
+  input: {
+    fontSize: 20,
+    fontWeight: '500',
+    color: C.white,
+    borderBottomWidth: 1.5,
+    borderBottomColor: C.inputLine,
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+  },
+  inputFocused: { borderBottomColor: C.lime },
+
+  // Custom interest row
+  customRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: C.chipBorder,
+    marginBottom: 16,
   },
-  logoBox: {
-    width: 40, height: 40, borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  logoEmoji: { fontSize: 20 },
-  appName: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  headline: { ...typography.h2, color: '#fff', marginBottom: spacing.sm },
-  sub: { fontSize: 15, color: 'rgba(255,255,255,0.65)', marginBottom: spacing.xl, lineHeight: 22 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    ...shadows.md,
-  },
-  field: { marginBottom: spacing.lg },
-  label: {
-    fontSize: 12, fontWeight: '700', color: colors.textMuted,
-    letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: spacing.sm,
-  },
-  hint: { fontSize: 13, color: colors.textLight, marginBottom: spacing.sm },
-  input: {
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: colors.text,
-  },
-  customRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  customRowFocused: { borderColor: C.lime },
   customInput: {
     flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: colors.text,
+    fontSize: 14,
+    color: C.white,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   addBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: C.lime,
   },
-  addBtnDisabled: { opacity: 0.35 },
-  addBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  addBtnOff: { backgroundColor: '#111' },
+  addBtnText: { fontSize: 11, fontWeight: '900', color: C.bg, letterSpacing: 1.5 },
+  addBtnTextOff: { color: C.muted },
+
+  // Chips
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: radius.full,
-    borderWidth: 1.5, borderColor: colors.border,
-    backgroundColor: colors.background,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderWidth: 1, borderColor: C.chipBorder,
   },
-  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipCustom: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { fontSize: 13, fontWeight: '500', color: colors.textMuted },
-  chipTextSelected: { color: '#fff' },
-  chipRemove: { fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: '700' },
+  chipActive: { backgroundColor: C.lime, borderColor: C.lime },
+  chipText: { fontSize: 12, fontWeight: '600', color: C.muted, letterSpacing: 0.3 },
+  chipTextActive: { color: C.bg },
+
+  chipCustom: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderWidth: 1, borderColor: C.lime,
+    backgroundColor: 'rgba(204,255,0,0.06)',
+  },
+  chipCustomText: { fontSize: 12, fontWeight: '600', color: C.lime, letterSpacing: 0.3 },
+  chipX: { fontSize: 14, color: C.lime, fontWeight: '300' },
+
+  selectedCount: {
+    fontSize: 11, color: C.lime, letterSpacing: 1, fontWeight: '700',
+    marginTop: 14,
+  },
+
+  // CTA Button
   btn: {
-    backgroundColor: '#fff',
-    borderRadius: radius.full,
-    paddingVertical: 16,
+    marginTop: 8,
+    backgroundColor: C.lime,
+    paddingVertical: 18,
     alignItems: 'center',
   },
-  btnDisabled: { opacity: 0.4 },
-  btnText: { fontSize: 17, fontWeight: '700', color: colors.primary },
+  btnOff: { backgroundColor: '#111' },
+  btnText: { fontSize: 15, fontWeight: '900', color: C.bg, letterSpacing: 2 },
+  btnTextOff: { color: C.muted },
 });
