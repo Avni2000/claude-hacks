@@ -7,6 +7,7 @@ import { colors, radius } from '../theme';
 import { useProfile } from '../context/ProfileContext';
 
 // Onboarding
+import LoginScreen from '../screens/onboarding/LoginScreen';
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
 import NamePhotoScreen from '../screens/onboarding/NamePhotoScreen';
 import ProfessionalScreen from '../screens/onboarding/ProfessionalScreen';
@@ -69,6 +70,7 @@ function MainTabs() {
 function OnboardingStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="NamePhoto" component={NamePhotoScreen} />
       <Stack.Screen name="Professional" component={ProfessionalScreen} />
